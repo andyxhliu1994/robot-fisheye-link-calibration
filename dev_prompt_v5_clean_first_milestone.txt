@@ -1,0 +1,594 @@
+You are helping me develop an offline automatic calibration pipeline for arbitrarily mounted fisheye cameras on a robot arm.
+
+Project goal
+============
+Given a Unity-generated calibration dataset, estimate for each fisheye camera:
+
+1. Which robot link the camera is attached to.
+2. The static relative transform T_link_camera.
+3. A confidence score for the estimated link and transform.
+4. A failure reason and guided data-collection suggestion if confidence is low.
+
+The core idea is multi-pose consistency:
+
+    T_base_board ≈ T_base_link_i(t) · T_link_camera · T_camera_board(t)
+
+Known:
+- Robot kinematic link poses T_base_link_i(t) for candidate links.
+- RGB fisheye images.
+- ChArUco board geometry parameters.
+- Camera image frame sequence and synchronized frame_id.
+
+Unknown:
+- Attached link for each camera.
+- Static relative transform T_link_camera.
+- Static board pose T_base_board.
+
+Important:
+The algorithm must NOT use ground-truth camera transforms or setup_used.json for estimation. Those are only for evaluation.
+
+
+Actual local project layout
+===========================
+The user may open the parent folder Auto_Calibrate in Codex.
+
+Use this session root as the working directory:
+
+    Auto_Calibrate/Unity_180x5/FisheyeCalibrationRecordings/20260710_105508_6296d31e0e294318aab083dc20c2bec1/
+
+Inside this session root, these folders are siblings:
+
+    calibration_pipeline/
+    dataset/
+    outputs/
+    tests/
+
+Important:
+- dataset/ is NOT inside calibration_pipeline/.
+- calibration_pipeline/ is the Python package source directory.
+- dataset/ is the dataset root.
+- outputs/ is where reports, caches, overlays, and plots should be written.
+- tests/ is where pytest tests should be written.
+
+Use:
+    --dataset ./dataset
+    --output ./outputs/integrity_report.json
+
+Do not search the whole Auto_Calibrate tree for data unless explicitly requested. Use ./dataset as the canonical dataset root for this session.
+
+
+Dataset structure
+=================
+The dataset root has this structure:
+
+    dataset/
+        charuco_board_config.json
+        camera_model_config.json
+        camera_calibration/
+            calibration_unity_180x5_physical_fisheye_14012026_153646.json
+        setup_used.json
+        session_summary.json
+        candidate_links.json
+        joint_states.csv
+        link_poses.csv
+        board_pose_base.csv
+        link_poses/
+            frame_000000.json
+            frame_000001.json
+            ...
+        cameras/
+            Fisheye180_Front_Cam1/
+                rgb/
+                    frame_000000.jpg
+                    frame_000001.jpg
+                    ...
+                transform/
+                    frame_000000.json
+                    frame_000001.json
+                    ...
+            Fisheye180_Front_Cam2/
+                rgb/
+                transform/
+            ...
+
+Important dataset fields:
+
+1. link_poses/frame_xxxxxx.json
+   Contains per-frame candidate link poses:
+       link_name
+       link_path_rel
+       valid
+       t_base_link
+       q_base_link_xyzw
+       T_base_link_rowmajor
+
+2. cameras/<camera_name>/transform/frame_xxxxxx.json
+   Ground truth for evaluation only:
+       t_base_cam
+       q_base_cam_xyzw
+       T_base_cam_rowmajor
+       gt_link_path_rel
+       gt_t_link_from_cam
+       gt_q_link_from_cam_xyzw
+
+   Important naming note:
+   The fields are named gt_t_link_from_cam and gt_q_link_from_cam_xyzw, but in the Unity code they are used as the camera local transform under the link. Therefore treat them as:
+
+       T_link_camera_gt
+
+   not T_camera_link.
+
+3. setup_used.json
+   Ground-truth camera mounting setup for evaluation only.
+
+4. board_pose_base.csv
+   Ground-truth board pose from Unity for debugging only.
+   Do not use it for estimation.
+
+5. joint_states.csv
+   Synchronized joint states. For the first implementation, use link_poses/*.json directly as the kinematic input. Later we can use joint_states + URDF/DH to compute link poses.
+
+6. candidate_links.json
+   List of candidate robot links.
+
+7. session_summary.json
+   Dataset metadata such as camera_count, frame_count, fisheye_size, record_fps.
+
+
+ChArUco board config
+====================
+Use charuco_board_config.json:
+
+    {
+      "type": "charuco",
+      "dictionary": "DICT_4X4_1000",
+      "squares_x": 10,
+      "squares_y": 7,
+      "square_length_m": 0.08,
+      "marker_length_m": 0.056,
+      "first_marker_id": 0,
+      "marker_count": 35,
+      "board_frame": {
+        "origin": "one corner of the board",
+        "x": "board horizontal direction",
+        "y": "board vertical direction",
+        "z": "board normal direction"
+      }
+    }
+
+The real board location in the robot base frame is unknown and should be estimated implicitly. The board should be treated as fixed during a recording segment.
+
+
+Coordinate and transform conventions
+====================================
+Use this convention everywhere:
+
+    T_A_B maps points from frame B to frame A.
+
+So:
+
+    p_A = T_A_B · p_B
+
+Dataset matrices are row-major 4x4 matrices.
+
+Main equation:
+
+    T_base_board = T_base_link · T_link_camera · T_camera_board
+
+Where:
+- T_base_link comes from link_poses/frame_xxxxxx.json.
+- T_camera_board comes from ChArUco detection and camera pose estimation.
+- T_link_camera is the unknown static camera mount transform.
+- T_base_board is unknown but constant during the sequence.
+
+Do not hard-code Unity camera convention inside the calibration core.
+
+The calibration core should only assume this:
+    pixel_to_ray() after CameraFrameAdapter must produce rays in the same camera pose frame used by T_camera_board and T_link_camera.
+
+For the current Unity dataset:
+- Unity camera local +Z is forward
+- x is right
+- y is up
+- z is forward
+- the validated camera frame adapter is flip_y:
+      F_cam = diag([1, -1, 1])
+
+For real fisheye deployment:
+- do not assume Unity convention
+- use the real camera intrinsic calibration
+- explicitly define the camera pose frame
+- if using OpenCV optical frame, use:
+      x right, y down, z forward
+  and the frame adapter may be identity
+- if using a robot/body camera frame, provide a fixed adapter from optical frame to that body frame
+
+Do not blindly use OpenCV's default pose convention as final T_camera_board unless the chosen camera pose frame is explicitly OpenCV optical frame. Always document the camera_pose_frame in outputs.
+
+
+CameraModel and CameraFrameAdapter architecture
+===============================================
+Implement a modular CameraModel + CameraFrameAdapter system.
+
+CameraModel:
+    pixel_to_ray(u, v, image_width, image_height) -> unit ray in the calibration ray frame
+
+CameraFrameAdapter:
+    converts rays from the calibration ray frame to the camera pose frame used by T_camera_board and T_link_camera
+
+The pipeline must ensure:
+    adapted_ray = CameraFrameAdapter(CameraModel.pixel_to_ray(u, v))
+    adapted_ray is in the same camera frame as T_camera_board and T_link_camera
+
+Supported CameraModel types:
+1. ocamcalib
+   Primary model for the current Unity dataset.
+2. equidistant_180_default
+   Fallback/debug only if no calibration file is provided.
+3. opencv_fisheye
+   Future real-camera option.
+4. ray_map
+   Future option if a precomputed per-pixel ray map is provided.
+
+Supported CameraFrameAdapter types:
+1. identity
+2. matrix_3x3
+3. named flip_y_to_unity:
+       diag([1, -1, 1])
+
+For the current dataset, load camera_model_config.json and use:
+    default_camera_model = ocamcalib
+    calibration file = camera_calibration/calibration_unity_180x5_physical_fisheye_14012026_153646.json
+    ray_frame_adapter = flip_y_to_unity
+
+Depth EXR files are not required for this calibration pipeline. The old point-cloud script is reference only.
+
+
+Camera model: ocamcalib
+=======================
+Implement an OCamCalibCameraModel in camera_model.py.
+
+Input JSON fields:
+- distortion_center: [xc, yc]
+- stretch_matrix: 2x2 matrix
+- taylor_coefficient: polynomial coefficients a0..aN
+- inverse_poly: optional, not required for pixel_to_ray in the first version
+
+Implement:
+
+    pixel_to_ray(u, v, image_width, image_height) -> unit ray
+
+Use this logic:
+
+1. Load:
+       xc, yc = distortion_center
+       A = stretch_matrix
+       a = taylor_coefficient
+
+2. Estimate calibration image size:
+       Wc = round(2 * xc)
+       Hc = round(2 * yc)
+
+3. Scale calibration parameters to current image size:
+       sx = W / Wc
+       sy = H / Hc
+       xc_scaled = sx * xc
+       yc_scaled = sy * yc
+       A_scaled = [[sx, 0], [0, sy]] @ A
+
+4. Compute centered pixel coordinates:
+       dU = u - xc_scaled
+       dV = v - yc_scaled
+
+5. Apply inverse affine stretch:
+       AinvT = inverse(A_scaled).T
+       X = dU * AinvT[0, 0] + dV * AinvT[1, 0]
+       Y = dU * AinvT[0, 1] + dV * AinvT[1, 1]
+
+6. Compute:
+       rho = sqrt(X^2 + Y^2)
+       z = polyval(reverse(taylor_coefficient), rho)
+
+7. Ray before frame adapter:
+       ray_raw = normalize([X, Y, z])
+
+8. For the current Unity dataset, apply:
+       F_cam = diag([1, -1, 1])
+       ray = F_cam @ ray_raw
+
+This ray is now in the Unity-compatible camera frame:
+       x right
+       y up
+       z forward
+
+The same OCamCalibCameraModel should support real fisheye cameras later. For real cameras, the frame adapter may be identity or another configured matrix depending on the camera pose convention.
+
+There is an old validated point-cloud fusion script in docs/reference/. It is not part of this calibration pipeline and should not be imported. It is only provided to show the previously validated OCamCalib pixel-to-ray implementation and the Unity-specific flip_y frame adapter. Reimplement the needed pixel_to_ray logic cleanly in calibration_pipeline/camera_model.py.
+
+camera_model_config.json should support this schema:
+
+    {
+      "default_camera_model": "ocamcalib",
+      "default_calibration_file": "camera_calibration/calibration_unity_180x5_physical_fisheye_14012026_153646.json",
+      "camera_pose_frame": "unity_camera",
+      "ray_frame": "ocamcalib_raw",
+      "ray_frame_adapter": {
+        "type": "matrix_3x3",
+        "name": "flip_y_to_unity_camera_frame",
+        "matrix": [
+          [1.0, 0.0, 0.0],
+          [0.0, -1.0, 0.0],
+          [0.0, 0.0, 1.0]
+        ]
+      },
+      "notes": "For the Unity dataset, ocamcalib rays are converted with flip_y before being used with Unity T_base_cam and T_link_camera."
+    }
+
+For real deployment, this config can be changed to OpenCV optical frame or another calibrated camera frame without changing the link-calibration core.
+
+
+KinematicsProvider architecture
+===============================
+Implement a modular KinematicsProvider interface.
+
+The calibration core should not care whether link poses come from Unity, ROS, URDF, DH, or a robot SDK.
+
+Interface:
+
+    class KinematicsProvider:
+        def get_candidate_link_poses(self, frame_id) -> dict[str, np.ndarray]:
+            \"\"\"Return {link_path_or_name: T_base_link} for this frame.\"\"\"
+
+First implementation:
+    UnityLinkPoseProvider
+        - reads link_poses/frame_xxxxxx.json
+        - or link_poses.csv
+        - returns T_base_link for every candidate link
+
+Future real-robot implementations:
+    RosTFProvider
+        - reads /tf or recorded tf bags
+    URDFKinematicsProvider
+        - computes FK from joint_states.csv + URDF/xacro
+    DHKinematicsProvider
+        - computes FK from joint_states.csv + DH parameters
+    SDKKinematicsProvider
+        - gets link poses from vendor SDK or FK API
+
+For this Unity dataset, use UnityLinkPoseProvider as the default kinematic source.
+joint_states.csv is synchronized and useful for future FK validation, but the first implementation should use link_poses/*.json directly.
+
+The estimated result should explicitly record:
+    kinematics_provider = "UnityLinkPoseProvider"
+    base_frame = "base"
+    candidate_links_source = "candidate_links.json"
+
+
+Ground-truth evaluation and integrity checks
+============================================
+Use setup_used.json and cameras/*/transform/*.json only for evaluation.
+
+Before any ChArUco detection or calibration, implement dataset integrity checks:
+
+1. Frame alignment:
+   Check that frame_id aligns across:
+       joint_states.csv
+       link_poses.csv
+       board_pose_base.csv
+       link_poses/*.json
+       cameras/*/rgb/*.jpg
+       cameras/*/transform/*.json
+
+2. GT transform consistency:
+   For a subset of frames and all cameras:
+
+       T_base_camera_pred = T_base_link_gt · T_link_camera_gt
+
+   where:
+       T_base_link_gt comes from link_poses/frame_xxxxxx.json using gt_link_path_rel
+       T_link_camera_gt comes from gt_t_link_from_cam and gt_q_link_from_cam_xyzw
+       T_base_camera_gt comes from camera transform JSON
+
+   Compare:
+       translation error in meters
+       rotation error in degrees
+       max matrix element error
+
+   Expected Unity numerical error should be very small.
+
+   If this check fails, stop and report the issue.
+
+Important:
+The setup field names gt_t_link_from_cam and gt_q_link_from_cam_xyzw are actually used as T_link_camera in Unity. Do not invert them for evaluation.
+
+
+Environment and reproducibility
+===============================
+Set up reproducible Python environment management from the first milestone.
+
+Create and maintain:
+    pyproject.toml
+    uv.lock if uv is available
+    requirements.txt
+    README_setup.md
+    .gitignore
+
+Use a local virtual environment, not the system Python.
+
+Recommended Python:
+    Python >=3.10,<3.13
+    Prefer Python 3.11 if available.
+
+Dependencies:
+    numpy
+    scipy
+    pandas
+    opencv-contrib-python
+    matplotlib
+    tqdm
+    pytest
+
+Important dependency rule:
+    Do not install opencv-python and opencv-contrib-python at the same time.
+    Prefer opencv-contrib-python because ArUco/ChArUco support is needed.
+
+Add an environment sanity test:
+    import numpy
+    import scipy
+    import pandas
+    import cv2
+    import pytest
+    assert hasattr(cv2, "aruco")
+    print cv2.__version__
+
+Document both Mac and Ubuntu setup commands in README_setup.md.
+
+Suggested uv setup:
+    uv venv --python 3.11
+    source .venv/bin/activate
+    uv pip install -e .
+    uv lock
+    pytest
+
+Suggested pip-only setup:
+    python3.11 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    pytest
+
+.gitignore should ignore:
+    .venv/
+    outputs/
+    __pycache__/
+    *.pyc
+    .DS_Store
+    .pytest_cache/
+
+Raw dataset policy:
+    Do not modify, move, rename, or delete raw dataset files.
+    Write generated reports, caches, overlays, and plots only under outputs/.
+    Cache files should also go under outputs/cache/ or outputs/detections/.
+
+
+Required code structure
+=======================
+Create a clean Python package and sibling tests:
+
+    calibration_pipeline/
+        __init__.py
+        se3_utils.py
+        dataset_loader.py
+        charuco_config.py
+        camera_model.py
+        camera_frame_adapter.py
+        kinematics_provider.py
+        evaluation.py
+        run_integrity_check.py
+
+    tests/
+        test_environment.py
+        test_se3_utils.py
+        test_dataset_loader.py
+        test_camera_model.py
+        test_camera_frame_adapter.py
+        test_kinematics_provider.py
+        test_gt_consistency.py
+
+Future modules for later milestones, not this first milestone:
+    calibration_pipeline/
+        charuco_detector.py
+        pose_from_charuco.py
+        link_calibrator.py
+        confidence.py
+        report.py
+        run_calibration.py
+
+
+Implementation details
+======================
+SE(3) utilities:
+- mat_from_t_q(t, q)
+- t_q_from_mat(T)
+- invert_T(T)
+- compose_T(A, B)
+- rotation_error_deg(R1, R2)
+- translation_error_m(t1, t2)
+
+Optional future SE(3) utilities:
+- se3_log(T)
+- se3_exp(xi)
+- average_se3(list_of_T)
+
+Quaternion convention:
+- xyzw
+
+Matrix convention:
+- row-major in files
+- internally use numpy 4x4 matrices
+
+Do not use ground-truth files during estimation.
+Only use them in evaluation.py and integrity check scripts.
+
+Make the code robust:
+- Do not require depth EXR files; calibration uses RGB only.
+- Do not import docs/reference/old_pointcloud_fusion_reference.py into the main pipeline.
+- Handle missing RGB files gracefully.
+- Handle missing transform files by skipping GT evaluation with clear warnings.
+- Allow processing a frame subset for debugging.
+
+
+First milestone scope
+=====================
+First milestone only:
+Implement environment setup and dataset integrity check.
+
+Do NOT implement:
+- ChArUco detection
+- T_camera_board estimation
+- link calibration
+- confidence scoring
+- report plots
+
+For this milestone, implement only:
+1. pyproject.toml
+2. requirements.txt
+3. README_setup.md
+4. .gitignore
+5. calibration_pipeline/se3_utils.py
+6. calibration_pipeline/dataset_loader.py
+7. calibration_pipeline/camera_model.py
+8. calibration_pipeline/camera_frame_adapter.py
+9. calibration_pipeline/kinematics_provider.py
+10. calibration_pipeline/evaluation.py
+11. calibration_pipeline/run_integrity_check.py
+12. pytest tests needed for these modules
+
+Main script:
+
+    python -m calibration_pipeline.run_integrity_check \
+        --dataset ./dataset \
+        --output ./outputs/integrity_report.json
+
+Goal:
+- Load the dataset from ./dataset.
+- Verify frame_id alignment across joint_states.csv, link_poses.csv, board_pose_base.csv, link_poses/*.json, cameras/*/rgb/*.jpg, and cameras/*/transform/*.json.
+- Load camera_model_config.json and camera_calibration/*.json, but only verify they are readable for now.
+- Use UnityLinkPoseProvider to read T_base_link from link_poses/*.json.
+- Run GT consistency check:
+      T_base_camera_pred = T_base_link_gt @ T_link_camera_gt
+  and compare with exported T_base_camera_gt in cameras/*/transform/*.json.
+- Produce outputs/integrity_report.json.
+- Run pytest and show test results.
+- Stop after this milestone is complete.
+
+
+Future milestones, not now
+==========================
+After the first milestone passes, later milestones will add:
+1. ChArUco detection and debug overlays.
+2. Ray-based T_camera_board estimation.
+3. Link association and T_link_camera estimation.
+4. Confidence scoring.
+5. Full calibration report and plots.
+
+Do not implement these future milestones yet.

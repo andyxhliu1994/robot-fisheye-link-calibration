@@ -1,0 +1,19 @@
+# Local Python environment and build products
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Local raw recording data (immutable; never commit or modify)
+dataset/
+
+# Generated reports, caches, overlays, detections, and plots
+outputs/
+outputs/cache/
+outputs/debug_overlays/
+outputs/detections/
+outputs/plots/
+
+# OS metadata
+.DS_Store
