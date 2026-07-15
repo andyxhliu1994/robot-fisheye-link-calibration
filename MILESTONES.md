@@ -126,3 +126,29 @@ Status: completed
 - pytest: 34 passed.
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
+
+## Milestone 4.5 — Shared-board recovery for motion-limited cameras
+
+Status: completed
+
+- Implemented observability-based camera classification without assuming a
+  particular link name: Cam2–Cam5 were selected as fully observable anchors and
+  Cam1 was selected as motion-limited.
+- Estimated one robust shared `T_base_board` from 158 valid anchor-camera poses.
+  Anchor agreement was 0.006516 m mean translation and 0.6468 deg mean rotation.
+- Recovered Cam1's full `T_link_camera` from 65 valid poses using the shared
+  fixed board, with high confidence. Recovery consistency was 0.023125 m mean
+  translation and 1.0389 deg mean rotation.
+- Optional post-recovery GT evaluation measured 0.014094 m translation error and
+  0.6628 deg rotation error for Cam1, replacing the unobservable independent
+  gauge result from Milestone 4.
+- Added explicit handling for multiple motion-limited cameras, no-recovery-needed
+  datasets, one-anchor opt-in recovery, and zero/insufficient-anchor datasets.
+- Ground truth is excluded from anchor selection, shared-board estimation,
+  recovery, and confidence assignment; it is loaded only after recovery is
+  finalized.
+- Generated `outputs/shared_board_recovery/shared_board_recovery_summary.json`
+  locally.
+- pytest: 41 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
