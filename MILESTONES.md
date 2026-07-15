@@ -48,3 +48,24 @@ Status: completed — dataset check FAIL (`DATASET_IMAGE_EXPORT_SUSPECT`)
   pipeline is fixed or independently verified.
 - pytest: 24 passed.
 - Milestone 1 integrity check: PASS.
+
+### Corrected multi-camera dataset validation
+
+Status: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`)
+
+- The Unity recorder RenderTexture issue was fixed by forcing a unique RGB
+  RenderTexture for each sub-camera.
+- The corrected dataset has 1,022 aligned frames.
+- Dataset sanity check: PASS.
+- All-camera byte-identical frames: 0/50 sampled frames.
+- Camera transforms distinct across cameras: true.
+- Detection JSONLs identical ignoring `camera_name`: false.
+- Integrity check: PASS.
+- ChArUco detection rerun on the corrected dataset (100 sampled frames per
+  camera):
+  - Cam1: 65/100 valid.
+  - Cam2: 53/100 valid.
+  - Cam3: 27/100 valid.
+  - Cam4: 31/100 valid.
+  - Cam5: 47/100 valid.
+- pytest: 24 passed.
