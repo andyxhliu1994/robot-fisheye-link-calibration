@@ -97,3 +97,32 @@ Status: completed
 - pytest: 29 passed.
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
+
+## Milestone 4 — Link association and camera mount estimation
+
+Status: completed
+
+- Implemented six-candidate link ranking and static `T_link_camera` estimation
+  from board-pose consistency using hand-eye initialization and robust joint
+  SE(3) refinement. Ground truth is excluded from estimation, scoring, ranking,
+  and initialization.
+- Generated `outputs/link_calibration/link_calibration_summary.json` and one
+  local result JSON per camera, including the complete six-link ranking.
+- The GT-attached link ranked first for all five cameras:
+  - Cam1: `shoulder_link`; score 0.009114; margin 0.350257; 65 poses.
+  - Cam2: `upper_arm_link`; score 0.009987; margin 0.551230; 53 poses.
+  - Cam3: `forearm_link`; score 0.010626; margin 0.633190; 27 poses.
+  - Cam4: `wrist_1_link`; score 0.004911; margin 0.439152; 31 poses.
+  - Cam5: `wrist_2_link`; score 0.006057; margin 0.430774; 47 poses.
+- Mean best-link board consistency ranged from 0.0031 m to 0.0076 m and
+  0.36 deg to 0.99 deg.
+- Cam2–Cam5 mounts were fully observable (Jacobian rank 12/12). Their optional
+  post-estimation GT errors ranged from 0.0026 m to 0.0101 m and 0.68 deg to
+  0.84 deg.
+- Cam1 shoulder motion was rank deficient (10/12): translation along and
+  rotation about its single motion axis are not identifiable from this dataset.
+  Its output uses an explicit minimum-norm gauge and must not be interpreted as
+  a fully recovered mount; optional GT error was 0.1229 m and 175.98 deg.
+- pytest: 34 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
