@@ -13,7 +13,7 @@ from calibration_pipeline.final_calibration_export import (
 )
 from calibration_pipeline.run_export_final_camera_poses import main as pose_export_main
 from calibration_pipeline.run_final_calibration_export import main as final_export_main
-from calibration_pipeline.se3_utils import mat_from_t_q
+from calibration_pipeline.se3_utils import mat_from_t_q, t_q_from_mat
 
 
 def make_transform(rotation_vector, translation):
@@ -197,11 +197,19 @@ def test_final_calibration_schema_and_adapter_metadata_are_complete(tmp_path):
         "confidence",
         "warnings",
         "observability",
-        "gt_validation_available",
-        "gt_T_link_camera_translation_error_m",
-        "gt_T_link_camera_rotation_error_deg",
     }
     assert required_camera <= set(calibration["cameras"][0])
+    assert calibration["validation"] == {
+        "gt_validation_available": False,
+        "evaluation_only": True,
+        "static_validation_report": None,
+        "camera_pose_validation_report": None,
+    }
+    assert all(
+        not key.startswith("gt_")
+        for camera in calibration["cameras"]
+        for key in camera
+    )
     adapters = calibration["frame_adapters"]
     ray_adapter = adapters["camera_ray_to_camera_pose_adapter"]
     assert len(ray_adapter["matrix_rowmajor_3x3"]) == 9
@@ -295,6 +303,103 @@ def write_cli_fixture(root: Path):
     return dataset, link_path, recovery_path
 
 
+def write_static_mount_gt(dataset: Path):
+    _, _, _, anchor_mount, recovered_mount = fixture_summaries()
+    cameras = []
+    for camera_name, link_path, transform in (
+        ("anchor_camera", "robot/anchor_link", anchor_mount),
+        ("limited_camera", "robot/limited_link", recovered_mount),
+    ):
+        translation, quaternion = t_q_from_mat(transform)
+        cameras.append(
+            {
+                "camera_name": camera_name,
+                "link_path_rel": link_path,
+                "t_link_from_cam": dict(zip(("x", "y", "z"), translation.tolist())),
+                "q_link_from_cam_xyzw": dict(
+                    zip(("x", "y", "z", "w"), quaternion.tolist())
+                ),
+            }
+        )
+    (dataset / "setup_used.json").write_text(
+        json.dumps({"cameras": cameras}), encoding="utf-8"
+    )
+
+
+def test_gt_mount_metrics_are_written_only_to_static_validation_report(tmp_path):
+    dataset, link_path, recovery_path = write_cli_fixture(tmp_path)
+    write_static_mount_gt(dataset)
+    output = tmp_path / "outputs"
+    assert (
+        final_export_main(
+            [
+                "--dataset",
+                str(dataset),
+                "--link-calibration",
+                str(link_path),
+                "--shared-board-recovery",
+                str(recovery_path),
+                "--output",
+                str(output),
+                "--evaluate-gt",
+            ]
+        )
+        == 0
+    )
+    output_dir = output / "final_calibration"
+    calibration = json.loads(
+        (output_dir / "final_calibration.json").read_text(encoding="utf-8")
+    )
+    assert calibration["validation"]["gt_validation_available"] is True
+    assert calibration["validation"]["evaluation_only"] is True
+    assert calibration["validation"]["static_validation_report"] is not None
+    assert all(
+        not key.startswith("gt_")
+        for camera in calibration["cameras"]
+        for key in camera
+    )
+    report = json.loads(
+        (output_dir / "final_static_calibration_validation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert report["gt_validation_available"] is True
+    assert report["evaluation_only"] is True
+    assert report["cameras_evaluated"] == 2
+    assert all(
+        camera["gt_T_link_camera_translation_error_m"] < 1e-10
+        for camera in report["cameras"]
+    )
+
+
+def test_evaluate_gt_with_missing_gt_still_writes_deployment_calibration(tmp_path):
+    dataset, link_path, recovery_path = write_cli_fixture(tmp_path)
+    output = tmp_path / "outputs"
+    assert (
+        final_export_main(
+            [
+                "--dataset",
+                str(dataset),
+                "--link-calibration",
+                str(link_path),
+                "--shared-board-recovery",
+                str(recovery_path),
+                "--output",
+                str(output),
+                "--evaluate-gt",
+            ]
+        )
+        == 0
+    )
+    output_dir = output / "final_calibration"
+    calibration = json.loads(
+        (output_dir / "final_calibration.json").read_text(encoding="utf-8")
+    )
+    assert calibration["validation"]["gt_validation_available"] is False
+    assert calibration["validation"]["static_validation_report"] is None
+    assert not (output_dir / "final_static_calibration_validation.json").exists()
+
+
 def test_final_export_and_pose_export_cli_smoke(tmp_path):
     dataset, link_path, recovery_path = write_cli_fixture(tmp_path)
     output = tmp_path / "outputs"
@@ -317,6 +422,14 @@ def test_final_export_and_pose_export_cli_smoke(tmp_path):
     calibration_path = output / "final_calibration" / "final_calibration.json"
     assert calibration_path.is_file()
     assert (output / "final_calibration" / "README.md").is_file()
+    calibration = json.loads(calibration_path.read_text(encoding="utf-8"))
+    assert calibration["validation"]["gt_validation_available"] is False
+    assert calibration["validation"]["static_validation_report"] is None
+    assert all(
+        not key.startswith("gt_")
+        for camera in calibration["cameras"]
+        for key in camera
+    )
     assert (
         pose_export_main(
             [

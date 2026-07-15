@@ -182,3 +182,24 @@ Status: completed
 - pytest: 48 passed.
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
+
+## Milestone 5.1 — Deployment/validation metadata separation
+
+Status: completed
+
+- Removed all per-camera GT-derived fields from the deployment-critical
+  `final_calibration.json` camera entries while preserving static transforms,
+  confidence, warnings, observability, transform conventions, and adapter/frame
+  metadata.
+- Added a lightweight evaluation-only `validation` reference block to
+  `final_calibration.json`.
+- Moved optional `T_link_camera` GT metrics into
+  `outputs/final_calibration/final_static_calibration_validation.json`; all five
+  cameras were evaluated with the same 0.002597–0.014094 m translation and
+  0.6628–0.8430 deg rotation error ranges reported in Milestone 5.
+- Kept per-frame absolute-pose metrics separate in
+  `outputs/final_calibration/final_camera_pose_validation.json`; all 5,110
+  exported `T_base_cam` poses still pass validation.
+- Export with missing GT or `--no-evaluate-gt` remains successful and emits
+  false/null validation references without embedding GT fields.
+- pytest: 50 passed.

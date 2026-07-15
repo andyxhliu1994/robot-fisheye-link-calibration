@@ -256,9 +256,6 @@ def select_final_camera_calibrations(
                     "independent_score_margin": independent.get("score_margin"),
                     "shared_board_recovery_used": recovery is not None,
                 },
-                "gt_validation_available": False,
-                "gt_T_link_camera_translation_error_m": None,
-                "gt_T_link_camera_rotation_error_deg": None,
             }
         )
     return final_cameras
@@ -292,6 +289,12 @@ def build_final_calibration(
             "runtime_composition": "T_base_cam = T_base_link @ T_link_camera",
         },
         "frame_adapters": build_frame_metadata(dataset_root),
+        "validation": {
+            "gt_validation_available": False,
+            "evaluation_only": True,
+            "static_validation_report": None,
+            "camera_pose_validation_report": None,
+        },
         "camera_count": len(cameras),
         "cameras": cameras,
     }
