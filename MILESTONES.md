@@ -69,3 +69,31 @@ Status: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`)
   - Cam4: 31/100 valid.
   - Cam5: 47/100 valid.
 - pytest: 24 passed.
+
+## Milestone 3 — Ray-based ChArUco board pose estimation
+
+Status: completed
+
+- Implemented `T_camera_board` estimation from ChArUco correspondences and
+  calibrated unit rays using robust `scipy.optimize.least_squares` refinement.
+- The estimation core uses no robot kinematics or Unity ground truth; optional GT
+  metrics are computed only after each pose has been estimated.
+- Generated 500 local board-pose JSONL records and 500 pose overlays from 100
+  stride-sampled frames per camera.
+- Valid poses matched frames with at least eight ChArUco corners:
+  - Cam1: 65/100; mean ray error 0.0254 deg.
+  - Cam2: 53/100; mean ray error 0.0224 deg.
+  - Cam3: 27/100; mean ray error 0.0226 deg.
+  - Cam4: 31/100; mean ray error 0.0249 deg.
+  - Cam5: 47/100; mean ray error 0.0278 deg.
+- Overall: 223/500 valid poses, 0.0248 deg mean ray error, 0.0242 deg
+  median ray error, and 0.0611 deg maximum per-frame mean ray error.
+- No optimized pose had board points behind the camera; all invalid records were
+  caused by insufficient detected ChArUco corners.
+- Evaluation-only GT comparison used an explicit adapter from the ChArUco
+  outer-corner/+Y-down frame to Unity's centered/+Y-up board frame. Across valid
+  poses, mean GT error was 0.0124 m and 1.1460 deg (median 0.0108 m and
+  0.8631 deg).
+- pytest: 29 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).

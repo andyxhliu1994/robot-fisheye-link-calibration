@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import cv2
+import numpy as np
 
 from .dataset_loader import load_json_document
 
@@ -106,3 +107,38 @@ class CharucoBoardConfig:
             )
         return board
 
+    def chessboard_corners(self) -> np.ndarray:
+        """Return ChArUco corner coordinates indexed by detected corner ID.
+
+        Coordinates follow OpenCV's ChArUco board convention: the origin is the
+        outer board corner, +X crosses columns, +Y crosses rows, and Z is zero on
+        the board plane. This explicit convention keeps pose estimation separate
+        from any Unity-only ground-truth board frame.
+        """
+        board = self.create_board()
+        if hasattr(board, "getChessboardCorners"):
+            corners = board.getChessboardCorners()
+        elif hasattr(board, "chessboardCorners"):  # OpenCV 3/early 4
+            corners = board.chessboardCorners
+        else:
+            raise RuntimeError("This OpenCV version cannot expose ChArUco corners")
+        result = np.asarray(corners, dtype=float).reshape(-1, 3)
+        expected = (self.squares_x - 1) * (self.squares_y - 1)
+        if len(result) != expected:
+            raise ValueError(f"Expected {expected} ChArUco corners, got {len(result)}")
+        return result
+
+    def corner_points_for_ids(self, corner_ids: np.ndarray) -> np.ndarray:
+        ids = np.asarray(corner_ids, dtype=int).reshape(-1)
+        corners = self.chessboard_corners()
+        if np.any(ids < 0) or np.any(ids >= len(corners)):
+            raise ValueError("Detected ChArUco corner ID is outside the board")
+        return corners[ids]
+
+    @property
+    def board_width_m(self) -> float:
+        return self.squares_x * self.square_length_m
+
+    @property
+    def board_height_m(self) -> float:
+        return self.squares_y * self.square_length_m
