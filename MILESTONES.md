@@ -152,3 +152,33 @@ Status: completed
 - pytest: 41 passed.
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
+
+## Milestone 5 — Final calibration export and pose validation
+
+Status: completed
+
+- Generated `outputs/final_calibration/final_calibration.json` with explicit
+  `T_A_B` semantics, deployment frame definitions, board geometry, link-frame
+  metadata, and the actual OCamCalib-to-pose ray adapter matrix
+  `diag(1, -1, 1)`.
+- Final transform selection used no GT: Cam1 uses its high-confidence
+  shared-board recovery, while Cam2–Cam5 retain their fully observable
+  independent link calibrations. All five final cameras have high confidence.
+- Optional post-selection mount validation ranged from 0.002597 m to 0.014094 m
+  translation error and 0.6628 deg to 0.8430 deg rotation error.
+- Exported 1,022 depth-model-compatible `T_base_cam` records for each of five
+  cameras (5,110 total) using only
+  `T_base_cam = T_base_link @ T_link_camera`.
+- Offline absolute-pose validation evaluated all 1,022 frames per camera. All
+  cameras passed the 0.05 m mean-translation and 3 deg mean-rotation thresholds;
+  mean errors matched the static mount validation ranges above.
+- Generated `outputs/final_calibration/final_camera_pose_validation.json` and a
+  concise deployment `README.md` locally. The notes explicitly state that the
+  depth model consumes per-frame `T_base_cam`, not static `T_link_camera`, and
+  that the camera-ray adapter must not be applied twice.
+- Ground truth is excluded from transform selection, adapter metadata,
+  confidence assignment, and exported pose computation; it is used only after
+  finalization for validation.
+- pytest: 48 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
