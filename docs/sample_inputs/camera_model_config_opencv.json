@@ -1,0 +1,11 @@
+{
+  "default_camera_model": "ocamcalib",
+  "default_calibration_file": "camera_calibration/real_fisheye_ocam.json",
+  "ray_frame": "opencv_optical",
+  "pose_camera_frame": "opencv_optical",
+  "ray_frame_adapter": {
+    "type": "identity",
+    "name": "identity_verified_same_ray_and_pose_frame"
+  },
+  "notes": "Use identity only after verifying that calibrated rays and camera poses both use +X right, +Y down, +Z forward."
+}

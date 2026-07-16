@@ -1,0 +1,17 @@
+{
+  "setup_id": "example_setup",
+  "base_frame_name": "base",
+  "link_count": 2,
+  "links": [
+    {
+      "link_index": 0,
+      "link_name": "upper_arm_link",
+      "link_path_rel": "base/shoulder_link/upper_arm_link"
+    },
+    {
+      "link_index": 1,
+      "link_name": "wrist_1_link",
+      "link_path_rel": "base/shoulder_link/upper_arm_link/forearm_link/wrist_1_link"
+    }
+  ]
+}

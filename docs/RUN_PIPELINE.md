@@ -19,6 +19,14 @@ Before a new recording, complete the
 evaluation when it is available. For a real/no-GT recording, replace every
 `--evaluate-gt` with `--no-evaluate-gt`.
 
+There are two ways to run the static mount stages after board poses exist:
+
+- **Debug / step-by-step mode** runs link calibration, shared-board recovery,
+  and final export separately. Use it for a new setup, wrong-link diagnostics,
+  recovery inspection, motion-limited cameras, or threshold tuning.
+- **Routine wrapper mode** invokes those same three CLIs in order. Use it for
+  repeated runs after the setup and board poses have already been checked.
+
 ## Standard command sequence
 
 ### 1. Run tests
@@ -87,7 +95,7 @@ This stage detects ChArUco corners from the selected RGB frames, maps pixels to
 calibrated rays, applies the configured ray-frame adapter, and estimates board
 pose. For a full run, omit `--max-frames` and use `--frame-stride 1`.
 
-### 6. Associate links and estimate independent mounts
+### 6. Associate links and estimate independent mounts (debug mode)
 
 ```bash
 python -m calibration_pipeline.run_link_calibration \
@@ -101,7 +109,7 @@ This tests all candidate links and independently estimates static
 `T_link_camera`. Unity GT is consulted only after the ranking and estimate are
 complete.
 
-### 7. Recover motion-limited cameras
+### 7. Recover motion-limited cameras (debug mode)
 
 ```bash
 python -m calibration_pipeline.run_shared_board_recovery \
@@ -116,7 +124,7 @@ The default requires at least two fully observable anchor cameras. Do not use
 `--allow-single-anchor` merely to suppress an insufficient-anchor warning; it is
 an explicit reduced-redundancy mode.
 
-### 8. Export the final static calibration
+### 8. Export the final static calibration (debug mode)
 
 ```bash
 python -m calibration_pipeline.run_final_calibration_export \
@@ -129,6 +137,34 @@ python -m calibration_pipeline.run_final_calibration_export \
 
 Keep `outputs/final_calibration/final_calibration.json` for deployment. The
 static GT report, when available, is separate and evaluation-only.
+
+### Routine alternative for steps 6–8
+
+After `outputs/board_poses/` exists, replace the three debug commands above with:
+
+```bash
+python -m calibration_pipeline.run_static_calibration_pipeline \
+  --dataset ./dataset \
+  --board-poses ./outputs/board_poses \
+  --output ./outputs \
+  --evaluate-gt
+```
+
+For real/no-GT data:
+
+```bash
+python -m calibration_pipeline.run_static_calibration_pipeline \
+  --dataset ./dataset \
+  --board-poses ./outputs/board_poses \
+  --output ./outputs \
+  --no-evaluate-gt
+```
+
+The wrapper only orchestrates the existing independent link calibration,
+shared-board recovery, and final static export. It does not run ChArUco
+detection, estimate `T_camera_board`, or export depth-model compatibility data.
+It produces the same standard summaries and final deployment artifact. Use
+`--dry-run` to inspect the planned lower-level commands without executing them.
 
 ### 9. Optionally export offline absolute camera poses
 

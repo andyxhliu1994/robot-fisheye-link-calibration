@@ -45,7 +45,9 @@ Complete this checklist before calibration.
 - [ ] Existing outputs are intentionally retained or cleared outside the raw
       dataset; new generated files will stay under `outputs/`.
 - [ ] `python -m pytest` passes.
-- [ ] Integrity and sanity reports were reviewed where applicable.
+- [ ] The integrity check was run before calibration where its Unity inputs are
+      available.
+- [ ] The dataset sanity check was run before calibration.
 - [ ] Detection and pose overlays were visually inspected.
 - [ ] Link score margins, observability, anchor agreement, confidence, and
       warnings will be reviewed before deployment.

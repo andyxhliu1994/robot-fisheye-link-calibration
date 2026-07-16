@@ -49,6 +49,10 @@ not automatically safe for deployment.
 
 The same directory may contain per-camera result JSONs.
 
+These paths are identical whether stages 6–8 are run separately or through
+`run_static_calibration_pipeline`; the wrapper adds no alternate calibration
+format.
+
 ### `outputs/shared_board_recovery/shared_board_recovery_summary.json`
 
 Classifies observable anchors and motion-limited cameras, estimates the shared

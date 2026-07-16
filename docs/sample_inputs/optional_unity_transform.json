@@ -1,0 +1,24 @@
+{
+  "frame_id": "frame_000000",
+  "camera_name": "Fisheye180_Cam1",
+  "t_base_cam": [0.10, 0.20, 0.30],
+  "q_base_cam_xyzw": [0.0, 0.0, 0.0, 1.0],
+  "T_base_cam_rowmajor": [
+    1.0, 0.0, 0.0, 0.10,
+    0.0, 1.0, 0.0, 0.20,
+    0.0, 0.0, 1.0, 0.30,
+    0.0, 0.0, 0.0, 1.0
+  ],
+  "camera_frame_convention": {
+    "handedness": "right",
+    "x": "right",
+    "y": "up",
+    "z": "forward"
+  },
+  "ray_to_camera_rotation_rowmajor_3x3": [
+    1.0, 0.0, 0.0,
+    0.0, -1.0, 0.0,
+    0.0, 0.0, 1.0
+  ],
+  "usage": "Unity GT validation only; not used for calibration estimation"
+}

@@ -108,9 +108,24 @@ bad detections, or systematic pose errors before processing all desired frames.
 
 ## 7. Run calibration and export
 
-Continue with link calibration, shared-board recovery, and final export using
-the exact commands in [RUN_PIPELINE.md](RUN_PIPELINE.md). Use `--evaluate-gt`
-only when optional Unity truth exists; otherwise use `--no-evaluate-gt`.
+For a first run or a setup that needs diagnosis, continue with the separate link
+calibration, shared-board recovery, and final-export commands in
+[RUN_PIPELINE.md](RUN_PIPELINE.md). Separate commands make link rankings,
+motion-limited recovery, and threshold behavior easier to inspect.
+
+For a routine run after `outputs/board_poses/` has been verified, use:
+
+```bash
+python -m calibration_pipeline.run_static_calibration_pipeline \
+  --dataset ./dataset \
+  --board-poses ./outputs/board_poses \
+  --output ./outputs \
+  --evaluate-gt
+```
+
+For real/no-GT data, replace the final flag with `--no-evaluate-gt`. This wrapper
+does not rerun detection or board-pose estimation; it calls the existing link
+calibration, shared recovery, and final export CLIs in sequence.
 
 Inspect:
 

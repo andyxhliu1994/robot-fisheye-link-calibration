@@ -1,0 +1,16 @@
+{
+  "default_camera_model": "ocamcalib",
+  "default_calibration_file": "camera_calibration/unity_fisheye_matching_fov.json",
+  "ray_frame": "ocamcalib_raw",
+  "pose_camera_frame": "unity_camera_right_handed",
+  "ray_frame_adapter": {
+    "type": "matrix_3x3",
+    "name": "flip_y_to_unity_camera_frame",
+    "matrix": [
+      [1.0, 0.0, 0.0],
+      [0.0, -1.0, 0.0],
+      [0.0, 0.0, 1.0]
+    ]
+  },
+  "notes": "The adapter maps OCamCalib raw rays into the Unity camera pose frame during T_camera_board estimation. Do not apply it again to T_link_camera."
+}

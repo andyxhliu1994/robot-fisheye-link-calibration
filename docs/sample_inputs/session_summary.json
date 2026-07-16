@@ -1,0 +1,14 @@
+{
+  "setup_id": "example_setup",
+  "session_name": "example_calibration_recording_001",
+  "created_utc": "2030-01-01T12:00:00Z",
+  "frame_count_so_far": 120,
+  "fisheye_size": 2048,
+  "record_fps": 5.0,
+  "camera_count": 2,
+  "camera_names": [
+    "Fisheye180_Cam1",
+    "Fisheye180_Cam2"
+  ],
+  "notes": "Metadata must match the actual camera folders, frame count, image size, and recording."
+}

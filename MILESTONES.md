@@ -258,3 +258,32 @@ Status: completed
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`;
   0/50 all-camera byte-identical sampled frames).
+
+## Milestone 6.6 — Static calibration wrapper and input examples
+
+Status: completed
+
+- Added `python -m calibration_pipeline.run_static_calibration_pipeline` as a
+  convenience wrapper for the existing independent link calibration,
+  shared-board recovery, and final static calibration export CLIs. It starts
+  from existing board-pose JSONLs and does not rerun detection, board-pose
+  estimation, or depth-model compatibility export.
+- Added GT/no-GT, camera, minimum-pose, anchor-count, single-anchor, and dry-run
+  pass-through controls, early missing-board-pose validation, standard output
+  checks, and a per-camera terminal summary.
+- Kept all lower-level commands available and documented routine wrapper mode
+  separately from first-run/research debugging mode.
+- Added schema-faithful documentation templates for candidate links, per-frame
+  link poses, ChArUco geometry, Unity and real/OpenCV-style camera models,
+  session metadata, optional Unity camera GT, joint states, and flattened link
+  poses. All seven JSON and two CSV templates validated successfully.
+- Documented Unity versus real-robot inputs, frame/adapter differences, no-GT
+  operation, and the precomputed `T_base_link` boundary.
+- No core calibration algorithms, raw dataset files, or output schemas changed.
+- Current-dataset wrapper dry run: PASS; all three planned lower-level commands
+  and standard paths were printed without overwriting calibration outputs.
+- Documentation relative-link check: PASS (25 links across eight Markdown files).
+- pytest: 67 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`;
+  0/50 all-camera byte-identical sampled frames).

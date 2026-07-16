@@ -4,6 +4,9 @@ The calibration pipeline reads local raw data from `./dataset/`. Do not modify,
 move, or rename files in that directory during a run. Filenames use a shared
 `frame_xxxxxx` identifier to align cameras and robot kinematics.
 
+Copyable structural examples are available in
+[INPUT_FILE_SAMPLES.md](INPUT_FILE_SAMPLES.md).
+
 ## Calibration-core minimum
 
 ```text
@@ -249,3 +252,30 @@ Current Unity data typically uses `diag(1, -1, 1)` to map OCamCalib raw rays to
 the Unity camera pose frame. A real OpenCV optical camera may use identity,
 depending on its documented pose convention. Confirm the convention rather
 than choosing an adapter from the platform name alone.
+
+## Unity dataset vs real robot dataset
+
+A Unity recording usually includes synchronized RGB, `candidate_links.json`,
+camera/board configuration, matching camera calibration, and `T_base_link`
+exported directly from Unity transforms. It may additionally include GT camera
+transforms, `setup_used.json`, `board_pose_base.csv`, `joint_states.csv`, and
+`link_poses.csv` for evaluation and debugging.
+
+A real-robot recording usually includes synchronized RGB, physical-camera
+intrinsics, camera/board configuration, a candidate link list, and precomputed
+`T_base_link` for every candidate and frame. Those link poses may come from an
+SDK link-pose API, ROS `/tf`, joint states plus URDF FK, joint states plus DH
+kinematics, or vendor SDK FK. Real recordings normally have no camera GT,
+`setup_used.json`, or `board_pose_base.csv`.
+
+Use `--no-evaluate-gt` for real/no-GT data; `final_calibration.json` is still
+generated. Confidence comes from internal board consistency, link score margin,
+observability, ray error, and shared-anchor agreement rather than GT errors.
+Future Milestone 7 work may add direct FK/ROS/URDF adapters, but the current
+pipeline already consumes correctly precomputed `T_base_link` JSONs.
+
+Unity's right-handed camera pose frame is commonly +X right, +Y up, +Z forward,
+with raw OCamCalib rays adapted by `diag(1, -1, 1)`. A real OpenCV optical frame
+is commonly +X right, +Y down, +Z forward and may use identity when its ray model
+already outputs that exact pose frame. Record the actual convention in
+`camera_model_config.json`; platform labels alone are not sufficient.

@@ -1,0 +1,16 @@
+{
+  "type": "charuco",
+  "dictionary": "DICT_4X4_1000",
+  "squares_x": 10,
+  "squares_y": 7,
+  "square_length_m": 0.08,
+  "marker_length_m": 0.056,
+  "first_marker_id": 0,
+  "marker_count": 35,
+  "board_frame": {
+    "origin": "one outer corner of the board",
+    "x": "increasing square column",
+    "y": "increasing square row",
+    "z": "board normal from the right-hand rule"
+  }
+}

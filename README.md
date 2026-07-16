@@ -50,6 +50,20 @@ generated files are written under `./outputs/` and are ignored by Git.
 Start with the [new-dataset quickstart](docs/QUICKSTART_NEW_DATASET.md), then use
 the [full command sequence](docs/RUN_PIPELINE.md).
 
+After board poses have been generated, routine static calibration can run the
+three mount-calibration/export stages with one command:
+
+```bash
+python -m calibration_pipeline.run_static_calibration_pipeline \
+  --dataset ./dataset \
+  --board-poses ./outputs/board_poses \
+  --output ./outputs \
+  --evaluate-gt
+```
+
+Use `--no-evaluate-gt` for real/no-GT data. The separate lower-level commands
+remain available for research and debugging.
+
 ## Documentation
 
 - [Dataset format and required inputs](docs/DATASET_FORMAT.md)
@@ -58,6 +72,7 @@ the [full command sequence](docs/RUN_PIPELINE.md).
 - [Frames, transform directions, and adapters](docs/FRAME_CONVENTIONS.md)
 - [Quickstart for Unity and real-robot datasets](docs/QUICKSTART_NEW_DATASET.md)
 - [New-dataset checklist](docs/NEW_DATASET_CHECKLIST.md)
+- [Input-file samples and templates](docs/INPUT_FILE_SAMPLES.md)
 - [Implemented milestones](MILESTONES.md)
 
 The current real-robot input boundary is per-frame `T_base_link` for every
