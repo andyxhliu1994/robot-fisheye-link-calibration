@@ -318,3 +318,27 @@ Status: completed
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`;
   0/50 all-camera byte-identical sampled frames).
+
+## Milestone 6.7.1 — Evaluation plot refinement
+
+Status: completed
+
+- Refined the candidate-link heatmap with `log10` residual-score colors, raw
+  score annotations, ★ predicted-link markers, and optional ✓ GT-link markers.
+  All five predicted links match GT in the current experiment.
+- Updated static `T_link_camera` translation and rotation plots with explicit
+  titles and numeric bar labels. Translation is displayed in millimetres and
+  rotation in degrees.
+- Updated runtime `T_base_cam` and relative-pose translation plots to display
+  millimetres for consistency. Existing JSON and CSV translation fields remain
+  in metres; no evaluation table schema changed.
+- Regenerated all 13 current single-run evaluation plots and visually verified
+  the link-score heatmap and both static `T_link_camera` error plots.
+- Updated the generated report and repository documentation with marker, color,
+  unit, GT/no-GT, and single-run interpretation details.
+- No calibration algorithm, raw dataset file, deployment output, or depth-model
+  compatibility logic changed. Multi-run aggregation was not added.
+- pytest: 87 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`;
+  0/50 all-camera byte-identical sampled frames).

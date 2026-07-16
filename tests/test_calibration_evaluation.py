@@ -4,12 +4,14 @@ from pathlib import Path
 
 import numpy as np
 
+from calibration_pipeline.calibration_evaluation import plots as evaluation_plots
 from calibration_pipeline.calibration_evaluation.metrics import (
     LINK_RANKING_COLUMNS,
     PAIRWISE_COLUMNS,
     PER_CAMERA_COLUMNS,
     collect_calibration_metrics,
 )
+from calibration_pipeline.calibration_evaluation.report import build_report
 from calibration_pipeline.run_calibration_evaluation import main
 
 
@@ -419,3 +421,162 @@ def test_explicit_no_gt_cli_mode_succeeds(tmp_path):
     summary = json.loads((output / "calibration_metrics_summary.json").read_text())
     assert summary["gt_evaluation_enabled"] is False
     assert summary["global_gt_based_metrics"] is None
+
+
+def test_link_heatmap_plots_predicted_and_gt_markers(tmp_path):
+    ranking = [
+        {"camera_name": "camera_1", "link_name": "link_a", "score": 0.01},
+        {"camera_name": "camera_1", "link_name": "link_b", "score": 0.2},
+    ]
+    camera_rows = [
+        {
+            "camera_name": "camera_1",
+            "attached_link_name": "link_a",
+            "gt_attached_link_name": "link_a",
+        }
+    ]
+    path = tmp_path / "link_score_heatmap.png"
+    assert evaluation_plots._link_score_heatmap(ranking, camera_rows, path) == str(path)
+    assert path.is_file()
+    _, links, _, annotations, gt_available = (
+        evaluation_plots._build_link_score_heatmap_data(ranking, camera_rows)
+    )
+    assert gt_available is True
+    assert "★✓" in annotations[0, links.index("link_a")]
+
+
+def test_link_heatmap_plots_predicted_marker_without_gt(tmp_path):
+    ranking = [
+        {"camera_name": "camera_1", "link_name": "link_a", "score": 0.01},
+        {"camera_name": "camera_1", "link_name": "link_b", "score": 0.2},
+    ]
+    camera_rows = [{"camera_name": "camera_1", "attached_link_name": "link_a"}]
+    path = tmp_path / "link_score_heatmap.png"
+    assert evaluation_plots._link_score_heatmap(ranking, camera_rows, path) == str(path)
+    _, links, _, annotations, gt_available = (
+        evaluation_plots._build_link_score_heatmap_data(ranking, camera_rows)
+    )
+    assert gt_available is False
+    assert "★" in annotations[0, links.index("link_a")]
+    assert "✓" not in "".join(annotations.reshape(-1))
+
+
+def test_link_heatmap_uses_log_colors_and_raw_score_annotations():
+    ranking = [
+        {"camera_name": "camera_1", "link_name": "link_a", "score": 0.01},
+        {"camera_name": "camera_1", "link_name": "link_b", "score": 1.0},
+    ]
+    rows = [{"camera_name": "camera_1", "attached_link_name": "link_a"}]
+    _, links, colors, annotations, _ = (
+        evaluation_plots._build_link_score_heatmap_data(ranking, rows)
+    )
+    best_index = links.index("link_a")
+    assert colors[0, best_index] == np.log10(
+        0.01 + evaluation_plots.LINK_SCORE_LOG_EPSILON
+    )
+    assert annotations[0, best_index].startswith("0.01")
+
+
+def test_static_translation_bar_converts_metres_to_millimetres(monkeypatch, tmp_path):
+    captured = {}
+
+    def capture(fig, path):
+        axis = fig.axes[0]
+        captured["heights"] = [bar.get_height() for bar in axis.patches]
+        captured["labels"] = [text.get_text() for text in axis.texts]
+        captured["ylabel"] = axis.get_ylabel()
+        captured["title"] = axis.get_title()
+        evaluation_plots.plt.close(fig)
+        return str(path)
+
+    monkeypatch.setattr(evaluation_plots, "_save", capture)
+    evaluation_plots._bar_plot(
+        [{"camera_name": "camera_1", "error_m": 0.0141}],
+        "error_m",
+        tmp_path / "translation.png",
+        title="Static T_link_camera translation error",
+        ylabel="Translation error (mm)",
+        value_scale=1000.0,
+        value_label=lambda value: f"{value:.1f} mm",
+    )
+    assert captured["heights"] == [14.1]
+    assert captured["labels"] == ["14.1 mm"]
+    assert captured["ylabel"] == "Translation error (mm)"
+    assert captured["title"] == "Static T_link_camera translation error"
+
+
+def test_static_rotation_bar_includes_numeric_labels(monkeypatch, tmp_path):
+    captured = {}
+
+    def capture(fig, path):
+        axis = fig.axes[0]
+        captured["labels"] = [text.get_text() for text in axis.texts]
+        captured["title"] = axis.get_title()
+        evaluation_plots.plt.close(fig)
+        return str(path)
+
+    monkeypatch.setattr(evaluation_plots, "_save", capture)
+    evaluation_plots._bar_plot(
+        [{"camera_name": "camera_1", "error_deg": 0.84}],
+        "error_deg",
+        tmp_path / "rotation.png",
+        title="Static T_link_camera rotation error",
+        ylabel="Rotation error (deg)",
+        value_label=lambda value: f"{value:.2f}°",
+    )
+    assert captured["labels"] == ["0.84°"]
+    assert captured["title"] == "Static T_link_camera rotation error"
+
+
+def test_report_explains_link_markers_and_plot_units(tmp_path):
+    cameras = ("Fisheye180_Cam1", "Fisheye180_Cam2")
+    dataset, outputs = write_fixture(tmp_path, cameras)
+    write_static_validation(outputs, cameras)
+    summary = collect_calibration_metrics(dataset, outputs, evaluate_gt=True)
+    report = build_report(summary)
+    assert "★ = predicted/best link; ✓ = GT link" in report
+    assert "All predicted links match GT." in report
+    assert "displayed in millimetres" in report
+    assert "CSV and JSON translation metrics remain in metres" in report
+
+
+def test_plot_metadata_does_not_change_csv_schema(tmp_path):
+    cameras = ("Fisheye180_Cam1", "Fisheye180_Cam2")
+    dataset, outputs = write_fixture(tmp_path, cameras)
+    write_static_validation(outputs, cameras)
+    output = tmp_path / "evaluation"
+    assert main(
+        [
+            "--dataset",
+            str(dataset),
+            "--outputs",
+            str(outputs),
+            "--output",
+            str(output),
+            "--evaluate-gt",
+            "--no-save-plots",
+        ]
+    ) == 0
+    with (output / "per_camera_metrics.csv").open(newline="") as stream:
+        assert next(csv.reader(stream)) == PER_CAMERA_COLUMNS
+    assert "gt_attached_link" not in PER_CAMERA_COLUMNS
+    assert "gt_attached_link_name" not in PER_CAMERA_COLUMNS
+
+
+def test_no_gt_evaluation_still_generates_predicted_link_heatmap(tmp_path):
+    dataset, outputs = write_fixture(tmp_path)
+    output = tmp_path / "evaluation"
+    assert main(
+        [
+            "--dataset",
+            str(dataset),
+            "--outputs",
+            str(outputs),
+            "--output",
+            str(output),
+            "--no-evaluate-gt",
+        ]
+    ) == 0
+    assert (output / "plots" / "link_score_heatmap.png").is_file()
+    report = (output / "report.md").read_text(encoding="utf-8")
+    assert "GT link markers are unavailable" in report

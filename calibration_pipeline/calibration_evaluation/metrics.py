@@ -521,6 +521,18 @@ def collect_calibration_metrics(
         translation_metric = runtime_record.get("translation_error_m", {})
         rotation_metric = runtime_record.get("rotation_error_deg", {})
         final_warnings = [str(item) for item in final_record.get("warnings", [])]
+        gt_link_path = None
+        if evaluate_gt:
+            gt_link_path = (
+                static_record.get("gt_attached_link")
+                or static_record.get("gt_link_path_rel")
+                or link_record.get("gt_link_path_rel")
+            )
+            if not gt_link_path and static_record.get("gt_attached_link_correct") is True:
+                gt_link_path = (
+                    final_record.get("attached_link")
+                    or link_record.get("best_link_path_rel")
+                )
         row = {
             "camera_name": name,
             "attached_link": final_record.get("attached_link")
@@ -577,6 +589,14 @@ def collect_calibration_metrics(
                 recovery_record, "recovery_consistency_rotation_deg", "mean"
             ),
             "recovery_warning": recovery_record.get("warning"),
+            # These evaluation-only fields support plot markers and remain outside
+            # PER_CAMERA_COLUMNS so the established CSV schemas do not change.
+            "gt_attached_link": gt_link_path,
+            "gt_attached_link_name": (
+                str(gt_link_path).rstrip("/").split("/")[-1]
+                if gt_link_path
+                else None
+            ),
             "gt_attached_link_correct": static_record.get("gt_attached_link_correct")
             if evaluate_gt
             else None,

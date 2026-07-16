@@ -25,6 +25,22 @@ def build_report(summary: Mapping[str, Any]) -> str:
     gt_free = summary.get("global_gt_free_metrics", {})
     gt = summary.get("global_gt_based_metrics") or {}
     confidence = gt_free.get("confidence_counts", {})
+    gt_link_rows = [
+        row
+        for row in cameras
+        if row.get("gt_attached_link_name") is not None
+        or row.get("gt_attached_link_correct") is not None
+    ]
+    link_mismatches = [
+        row
+        for row in gt_link_rows
+        if row.get("gt_attached_link_correct") is False
+        or (
+            row.get("gt_attached_link_name") is not None
+            and (row.get("attached_link_name") or "")
+            != row.get("gt_attached_link_name")
+        )
+    ]
     lines = [
         "# Single-experiment calibration evaluation",
         "",
@@ -122,10 +138,24 @@ def build_report(summary: Mapping[str, Any]) -> str:
             "## Link association and observability",
             "",
             f"Mean best-vs-second link score margin: {_fmt(gt_free.get('mean_link_score_margin'), 5)}.",
+            "The candidate-link heatmap uses `log10` residual-score colors (lower is better) while each cell annotation shows the raw residual score.",
+            "Marker legend: ★ = predicted/best link; ✓ = GT link when GT is available.",
             f"Shared-board anchors: {gt_free.get('shared_board_anchor_camera_count', 0)}; motion-limited cameras: {gt_free.get('shared_board_motion_limited_camera_count', 0)}.",
             f"Shared-anchor agreement: {_fmt(gt_free.get('shared_board_anchor_translation_mean_m'), 6)} m and {_fmt(gt_free.get('shared_board_anchor_rotation_mean_deg'), 4)} deg mean.",
         ]
     )
+    if gt_link_rows and not link_mismatches:
+        lines.append("All predicted links match GT.")
+    elif link_mismatches:
+        mismatch_text = ", ".join(
+            f"{_fmt(row.get('camera_name'))} "
+            f"(predicted={_fmt(row.get('attached_link_name') or row.get('attached_link'))}, "
+            f"GT={_fmt(row.get('gt_attached_link_name') or row.get('gt_attached_link'))})"
+            for row in link_mismatches
+        )
+        lines.append(f"Predicted/GT link mismatches: {mismatch_text}.")
+    else:
+        lines.append("GT link markers are unavailable; predicted links are still marked with ★.")
     for row in cameras:
         lines.append(
             f"- {_fmt(row.get('camera_name'))}: link={_fmt(row.get('attached_link_name') or row.get('attached_link'))}, "
@@ -142,10 +172,14 @@ def build_report(summary: Mapping[str, Any]) -> str:
                 f"Evaluation-only mean `T_link_camera` translation error: {_fmt(gt.get('mean_static_translation_error_m'), 6)} m.",
                 f"Evaluation-only mean `T_link_camera` rotation error: {_fmt(gt.get('mean_static_rotation_error_deg'), 4)} deg.",
                 f"Attached-link top-1 accuracy: {_percentage(gt.get('link_association_top1_accuracy'))}.",
+                "Static translation errors are displayed in millimetres in plots for readability; CSV and JSON translation metrics remain in metres.",
             ]
         )
     else:
-        lines.append("Static mount GT was not available or GT evaluation was disabled.")
+        lines.append(
+            "Static mount GT was not available or GT evaluation was disabled; "
+            "GT link markers and GT error plots are omitted."
+        )
 
     lines.extend(["", "## Runtime `T_base_cam` validation", ""])
     if summary.get("gt_metrics_available") and gt.get("mean_runtime_pose_translation_error_m") is not None:

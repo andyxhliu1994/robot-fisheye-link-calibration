@@ -76,6 +76,10 @@ python -m calibration_pipeline.run_calibration_evaluation \
 
 This reporting command does not alter calibration results. Use
 `--no-evaluate-gt` when Unity/offline validation reports are unavailable.
+The candidate-link heatmap uses log-scale colors with raw residual-score
+annotations: ★ marks the predicted link and ✓ marks the GT link when available.
+Translation-error plots use millimetres and error bars carry numeric labels for
+presentation readability; JSON and CSV translation metrics remain in metres.
 
 ## Documentation
 

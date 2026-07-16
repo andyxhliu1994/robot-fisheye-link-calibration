@@ -132,7 +132,10 @@ replace or modify any calibration artifact:
 - `pairwise_relative_metrics.csv`: ordered target/source `T_src_tgt` error rows
   when GT evaluation inputs exist, or a header-only table in no-GT mode;
 - `plots/`: available bar charts and heatmaps; GT plots are omitted when GT is
-  unavailable;
+  unavailable. The candidate-link heatmap uses log-scale colors, raw score
+  annotations, ★ for the predicted link, and ✓ for the GT link. Static
+  `T_link_camera` error bars include numeric values. Translation plots display
+  millimetres, while their source JSON/CSV metric fields remain in metres;
 - `report.md`: concise run metadata, executive summary, camera table, quality,
   observability, static/runtime/relative evaluation, warnings, and interpretation
   notes.

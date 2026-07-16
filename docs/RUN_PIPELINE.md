@@ -212,6 +212,14 @@ the separate validation reports/Unity transforms exist; GT-free detection,
 ray-error, score-margin, observability, recovery, confidence, and compatibility
 metrics remain available for real robots.
 
+The candidate-link score heatmap uses `log10` residual scores for color contrast
+while annotating each cell with its raw score. ★ marks the predicted/best link;
+✓ marks the GT link when GT evaluation is available. Static `T_link_camera`
+translation and runtime translation plots display millimetres, and static
+translation/rotation bars include numeric labels. The relative-pose translation
+heatmap also displays millimetres. These are display-only conversions: CSV and
+JSON translation fields remain in metres for compatibility.
+
 For a real/no-GT run:
 
 ```bash
