@@ -115,6 +115,31 @@ depth model's expected transform input style:
 If depth images are absent, manifest `depth_path` values are null and pose export
 still succeeds.
 
+## Single-experiment evaluation
+
+`outputs/evaluation/` is a reporting-only view of one completed run. It does not
+replace or modify any calibration artifact:
+
+- `calibration_metrics_summary.json`: machine-readable per-camera, global
+  GT-free, optional GT, metadata, warning, and artifact references designed for
+  future aggregation;
+- `per_camera_metrics.csv`: one row per camera combining detection, board pose,
+  link, observability, recovery, confidence, and optional GT metrics;
+- `gt_free_quality_metrics.csv`: deployment-relevant internal indicators without
+  Unity GT columns;
+- `link_ranking_table.csv`: one row per camera-link hypothesis, including rank,
+  score, consistency, and valid frame count;
+- `pairwise_relative_metrics.csv`: ordered target/source `T_src_tgt` error rows
+  when GT evaluation inputs exist, or a header-only table in no-GT mode;
+- `plots/`: available bar charts and heatmaps; GT plots are omitted when GT is
+  unavailable;
+- `report.md`: concise run metadata, executive summary, camera table, quality,
+  observability, static/runtime/relative evaluation, warnings, and interpretation
+  notes.
+
+This directory summarizes one dataset run. Cross-FOV, cross-setup, and multi-run
+benchmark aggregation are intentionally outside the current evaluator.
+
 ## What to deploy
 
 Deploy `final_calibration.json` plus the software/configuration needed to obtain

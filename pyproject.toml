@@ -21,9 +21,8 @@ dependencies = [
 test = ["pytest>=7.4,<9"]
 
 [tool.setuptools]
-packages = ["calibration_pipeline"]
+packages = ["calibration_pipeline", "calibration_pipeline.calibration_evaluation"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
-

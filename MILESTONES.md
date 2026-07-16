@@ -287,3 +287,34 @@ Status: completed
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`;
   0/50 all-camera byte-identical sampled frames).
+
+## Milestone 6.7 — Single-experiment calibration evaluation
+
+Status: completed
+
+- Added `python -m calibration_pipeline.run_calibration_evaluation` and reusable
+  single-run metric, plotting, and Markdown-report modules. Existing calibration
+  and deployment artifacts are read-only inputs; all new artifacts are written
+  under `outputs/evaluation/`.
+- Generated an aggregation-ready summary JSON, five-row per-camera and GT-free
+  CSVs, a 30-row camera/link ranking table, a 20-row ordered source-target table,
+  and a concise `report.md` for the current experiment.
+- Generated all 13 available GT-free and evaluation-only plots with matplotlib,
+  including link-score and relative-pose heatmaps. Plotting is robust to missing
+  metrics and uses no interactive backend.
+- Current GT-free summary: five high-confidence cameras, 44.6% mean detection
+  valid ratio, 0.024615 deg mean per-camera board-pose ray error, 0.480921 mean
+  link score margin, one motion-limited camera recovered from four anchors, and
+  both depth compatibility smoke tests passing.
+- Optional Unity/offline GT summary: 100% attached-link top-1 accuracy; mean
+  static error 0.007879 m and 0.7578 deg; mean runtime error 0.007879 m and
+  0.7578 deg; mean relative error 0.012391 m and 0.9389 deg across 20,440 ordered
+  source-target frame samples.
+- Documented GT/no-GT invocation, report interpretation, output meanings, and
+  the single-experiment boundary. Multi-run/cross-FOV aggregation was not added.
+- No core calibration algorithms, raw dataset files, deployment calibration, or
+  existing calibration-output schemas changed.
+- pytest: 79 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`;
+  0/50 all-camera byte-identical sampled frames).

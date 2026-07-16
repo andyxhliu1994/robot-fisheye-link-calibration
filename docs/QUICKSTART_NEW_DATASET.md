@@ -138,7 +138,23 @@ outputs/final_calibration/final_calibration.json
 Pay attention to score margins, observability, confidence, anchor agreement, and
 warnings. Unity validation reports, when available, are diagnostic only.
 
-## 8. Deploy the static result
+## 8. Generate a single-run evaluation report
+
+```bash
+python -m calibration_pipeline.run_calibration_evaluation \
+  --dataset ./dataset \
+  --outputs ./outputs \
+  --output ./outputs/evaluation \
+  --evaluate-gt
+```
+
+Use `--no-evaluate-gt` for a real/no-GT dataset. Review
+`outputs/evaluation/report.md`, the per-camera/ranking CSVs, and plots. GT-free
+metrics remain useful for visibility, ray quality, association margin,
+observability, recovery, and confidence. The summary covers one experiment and
+does not alter final calibration.
+
+## 9. Deploy the static result
 
 Keep `outputs/final_calibration/final_calibration.json`. At runtime, obtain the
 current FK pose of each camera's selected attached link and compute:

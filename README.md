@@ -64,6 +64,19 @@ python -m calibration_pipeline.run_static_calibration_pipeline \
 Use `--no-evaluate-gt` for real/no-GT data. The separate lower-level commands
 remain available for research and debugging.
 
+Summarize one completed experiment as JSON, CSV tables, plots, and Markdown:
+
+```bash
+python -m calibration_pipeline.run_calibration_evaluation \
+  --dataset ./dataset \
+  --outputs ./outputs \
+  --output ./outputs/evaluation \
+  --evaluate-gt
+```
+
+This reporting command does not alter calibration results. Use
+`--no-evaluate-gt` when Unity/offline validation reports are unavailable.
+
 ## Documentation
 
 - [Dataset format and required inputs](docs/DATASET_FORMAT.md)

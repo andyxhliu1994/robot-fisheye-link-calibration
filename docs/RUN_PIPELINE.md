@@ -194,6 +194,40 @@ By default this exports all aligned frames, per-frame transform JSONs, JSONL
 mirrors, and a sample manifest. Missing depth images are represented by null
 `depth_path` values rather than failing the pose export.
 
+### 11. Summarize one completed experiment
+
+```bash
+python -m calibration_pipeline.run_calibration_evaluation \
+  --dataset ./dataset \
+  --outputs ./outputs \
+  --output ./outputs/evaluation \
+  --evaluate-gt
+```
+
+This read-only evaluator summarizes the available Milestones 2–6 outputs into
+an aggregation-ready JSON, per-camera/ranking/pairwise CSV tables, simple PNG
+plots, and `report.md`. It does not change `final_calibration.json` or other
+calibration artifacts. GT metrics appear only when evaluation is enabled and
+the separate validation reports/Unity transforms exist; GT-free detection,
+ray-error, score-margin, observability, recovery, confidence, and compatibility
+metrics remain available for real robots.
+
+For a real/no-GT run:
+
+```bash
+python -m calibration_pipeline.run_calibration_evaluation \
+  --dataset ./dataset \
+  --outputs ./outputs \
+  --output ./outputs/evaluation \
+  --no-evaluate-gt
+```
+
+Use `--camera NAME` to report one camera, `--no-save-plots` for tables only,
+`--max-pairs N` to cap evaluated frames per ordered source-target pair, and
+`--strict` when missing expected inputs should fail instead of becoming report
+warnings. This command reports one experiment only; future benchmark tooling may
+aggregate its `calibration_metrics_summary.json` outputs across runs.
+
 ## Real robot / no-GT mode
 
 Use the same estimation stages but disable evaluation:
@@ -224,6 +258,10 @@ python -m calibration_pipeline.run_depth_model_compat_export \
   --dataset ./dataset \
   --calibration ./outputs/final_calibration/final_calibration.json \
   --output ./outputs/depth_model_compat --no-evaluate-gt
+
+python -m calibration_pipeline.run_calibration_evaluation \
+  --dataset ./dataset --outputs ./outputs \
+  --output ./outputs/evaluation --no-evaluate-gt
 ```
 
 The final calibration still exports successfully. Unity GT validation reports
