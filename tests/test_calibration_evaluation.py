@@ -442,7 +442,7 @@ def test_link_heatmap_plots_predicted_and_gt_markers(tmp_path):
         evaluation_plots._build_link_score_heatmap_data(ranking, camera_rows)
     )
     assert gt_available is True
-    assert "★✓" in annotations[0, links.index("link_a")]
+    assert annotations[0, links.index("link_a")] == "0.01\n★✓"
 
 
 def test_link_heatmap_plots_predicted_marker_without_gt(tmp_path):
@@ -475,6 +475,12 @@ def test_link_heatmap_uses_log_colors_and_raw_score_annotations():
         0.01 + evaluation_plots.LINK_SCORE_LOG_EPSILON
     )
     assert annotations[0, best_index].startswith("0.01")
+
+
+def test_heatmap_text_color_contrasts_with_viridis_cells():
+    viridis = evaluation_plots.plt.get_cmap("viridis")
+    assert evaluation_plots._readable_text_color(viridis(0.0)) == "white"
+    assert evaluation_plots._readable_text_color(viridis(1.0)) == "#111111"
 
 
 def test_static_translation_bar_converts_metres_to_millimetres(monkeypatch, tmp_path):

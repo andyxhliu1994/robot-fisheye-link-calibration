@@ -28,6 +28,13 @@ def _save(fig, path: Path) -> str:
     return str(path)
 
 
+def _readable_text_color(rgba: Sequence[float]) -> str:
+    """Choose high-contrast text from the rendered cell color."""
+    red, green, blue = (float(channel) for channel in rgba[:3])
+    luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    return "white" if luminance < 0.5 else "#111111"
+
+
 def _bar_plot(
     rows: Sequence[Mapping[str, Any]],
     field: str,
@@ -122,15 +129,17 @@ def _heatmap(
                     if annotations is not None
                     else f"{value:.3g}"
                 )
+                marked = "★" in label or "✓" in label
                 axis.text(
                     column_index,
                     row_index,
                     label,
                     ha="center",
                     va="center",
-                    color="white" if image.norm(value) > 0.55 else "black",
-                    fontsize=8,
-                    fontweight="bold" if "★" in label or "✓" in label else "normal",
+                    color=_readable_text_color(image.cmap(image.norm(value))),
+                    fontsize=9 if marked else 8,
+                    fontweight="bold" if marked else "normal",
+                    linespacing=1.0,
                 )
     colorbar = fig.colorbar(image, ax=axis)
     colorbar.set_label(colorbar_label)
@@ -200,7 +209,7 @@ def _build_link_score_heatmap_data(
             if gt.get(camera) == link:
                 markers += "✓"
             annotations[row_index, column_index] = (
-                f"{raw_score:.4g}" + (f" {markers}" if markers else "")
+                f"{raw_score:.4g}" + (f"\n{markers}" if markers else "")
             )
     color_values = np.where(
         np.isfinite(raw_scores),

@@ -338,7 +338,7 @@ Status: completed
   unit, GT/no-GT, and single-run interpretation details.
 - No calibration algorithm, raw dataset file, deployment output, or depth-model
   compatibility logic changed. Multi-run aggregation was not added.
-- pytest: 87 passed.
+- pytest: 88 passed.
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`;
   0/50 all-camera byte-identical sampled frames).
