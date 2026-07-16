@@ -236,3 +236,25 @@ Status: completed
 - pytest: 60 passed.
 - Milestone 1 integrity check: PASS.
 - Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
+
+## Milestone 6.5 — Reproducibility documentation
+
+Status: completed
+
+- Added a concise root `README.md` and detailed documentation for dataset inputs,
+  the complete command sequence, output meanings, transform/frame conventions,
+  new Unity and real-robot datasets, troubleshooting, and a reproducibility
+  checklist.
+- Documented `link_poses/*.json` as the calibration-core kinematic input and
+  distinguished it from optional Unity GT/debug sources. Also recorded the
+  current Unity-specific integrity checker's full-bundle expectations.
+- Documented Unity 180/210/240 FOV conversion mappings, matching OCamCalib and
+  ray-adapter requirements, deployment-safe validation separation, and runtime
+  depth-model composition with `T_base_cam = T_base_link @ T_link_camera`.
+- No calibration algorithms, raw dataset files, or generated output schemas were
+  changed.
+- Documentation relative-link check: PASS (14 links across seven Markdown files).
+- pytest: 60 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`;
+  0/50 all-camera byte-identical sampled frames).
