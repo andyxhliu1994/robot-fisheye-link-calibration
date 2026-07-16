@@ -203,3 +203,36 @@ Status: completed
 - Export with missing GT or `--no-evaluate-gt` remains successful and emits
   false/null validation references without embedding GT fields.
 - pytest: 50 passed.
+
+## Milestone 6 — Depth-model pose compatibility validation
+
+Status: completed
+
+- Completed integration/compatibility validation only; no calibration algorithm,
+  final static calibration, depth model, or dataset files were changed.
+- Exported 1,022 depth-model-compatible per-frame transforms for each of five
+  cameras (5,110 JSON files total), plus five JSONL mirrors. Every record
+  contains both `T_base_cam_rowmajor` and the `t_base_cam` /
+  `q_base_cam_xyzw` fallback representation, composed as
+  `T_base_cam = T_base_link @ T_link_camera`.
+- Generated a 1,022-sample manifest using the reference depth-model structure
+  and the 180-degree conversion key `FisheyeConversions_2`. The dataset has no
+  depth files, so all 5,110 manifest views retain their RGB and calibrated
+  transform paths with `depth_path` set to null.
+- Parser compatibility and relative-pose computation smoke tests passed. The
+  exported adapter metadata preserves the calibrated OCamCalib-to-camera pose
+  Y-axis flip and records that it was already applied during calibration.
+- Evaluation-only Unity GT absolute validation covered all 5,110 poses. Per-camera
+  mean errors ranged from 0.002597 m to 0.014094 m translation and 0.6628 deg to
+  0.8430 deg rotation, consistent with the Milestone 5 validation.
+- Evaluation-only relative validation covered 20,440 ordered source-target pairs
+  in each direction. For `T_src_tgt`, translation error was 0.012391 m mean,
+  0.011850 m median, and 0.026965 m max; rotation error was 0.9389 deg mean,
+  1.0419 deg median, and 1.6382 deg max. The inverse direction produced the same
+  aggregate statistics. GT was not used to generate or modify any transform.
+- Generated `outputs/depth_model_compat/depth_model_samples.json`,
+  `depth_model_compatibility_report.json`, and
+  `depth_model_pose_validation.json` locally.
+- pytest: 60 passed.
+- Milestone 1 integrity check: PASS.
+- Corrected-dataset sanity check: PASS (`CAMERA_STREAMS_AND_TRANSFORMS_DISTINCT`).
